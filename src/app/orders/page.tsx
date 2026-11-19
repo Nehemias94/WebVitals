@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import { OrderStatus } from "@/components/order-status";
 import { OrderListSkeleton } from "@/components/skeletons";
 import { getOrders } from "@/lib/data";
-import { formatDate, formatPrice, isPaid } from "@/lib/format";
+import { formatDate, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mis compras", robots: { index: false } };
 
-export default function OrdersPage() {
+export default function OrdersPage({ searchParams }: PageProps<"/orders">) {
   return (
     <div className="space-y-6">
       <div>
@@ -17,14 +17,16 @@ export default function OrdersPage() {
       </div>
       {/* El historial depende del token del usuario: se transmite con Suspense. */}
       <Suspense fallback={<OrderListSkeleton />}>
-        <OrderList />
+        <OrderList searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function OrderList() {
-  const orders = await getOrders();
+async function OrderList({ searchParams }: Pick<PageProps<"/orders">, "searchParams">) {
+  const { page: rawPage } = await searchParams;
+  const page = Math.max(1, Number(Array.isArray(rawPage) ? rawPage[0] : rawPage) || 1);
+  const { items: orders, currentPage, lastPage } = await getOrders(page);
 
   if (orders.length === 0) {
     return (
@@ -42,7 +44,7 @@ async function OrderList() {
       {orders.map((order) => (
         <li key={order.id}>
           <Link
-            href={isPaid(order.status) ? `/orders/${order.id}` : `/checkout/${order.id}`}
+            href={`/orders/${order.id}`}
             className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-zinc-200 bg-white p-5 transition hover:border-stone-400 hover:shadow-sm"
           >
             <div>
@@ -58,6 +60,21 @@ async function OrderList() {
           </Link>
         </li>
       ))}
+      {lastPage > 1 && (
+        <li className="flex items-center justify-center gap-3 pt-2 text-sm">
+          {currentPage > 1 && (
+            <Link href={`/orders?page=${currentPage - 1}`} className="rounded-lg border border-zinc-300 bg-white px-4 py-2">
+              ← Anterior
+            </Link>
+          )}
+          <span className="text-zinc-600">Página {currentPage} de {lastPage}</span>
+          {currentPage < lastPage && (
+            <Link href={`/orders?page=${currentPage + 1}`} className="rounded-lg border border-zinc-300 bg-white px-4 py-2">
+              Siguiente →
+            </Link>
+          )}
+        </li>
+      )}
     </ul>
   );
 }

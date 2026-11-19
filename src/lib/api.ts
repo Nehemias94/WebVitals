@@ -62,11 +62,9 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiOptions = {})
 
   if (!res.ok) {
     const body = (json ?? {}) as { message?: string; error?: string; errors?: Record<string, string[]> };
-    throw new ApiError(
-      res.status,
-      body.message || body.error || defaultMessage(res.status),
-      body.errors ?? {},
-    );
+    // La API manda un mensaje general en `message` y el detalle (p. ej. de Stripe) en `error`.
+    const message = [body.message, body.error].filter(Boolean).join(" ");
+    throw new ApiError(res.status, message || defaultMessage(res.status), body.errors ?? {});
   }
 
   return json as T;

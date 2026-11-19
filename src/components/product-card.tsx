@@ -19,7 +19,7 @@ export function ProductCard({ product, preload = false }: { product: Product; pr
             className="object-cover transition duration-300 group-hover:scale-105"
           />
         ) : (
-          <span className="absolute inset-0 grid place-items-center text-xs uppercase tracking-widest text-zinc-400">
+          <span className="absolute inset-0 grid place-items-center text-xs uppercase tracking-widest text-zinc-600">
             Sin imagen
           </span>
         )}
@@ -28,11 +28,11 @@ export function ProductCard({ product, preload = false }: { product: Product; pr
         {product.category && (
           <p className="text-xs font-medium uppercase tracking-wide text-amber-800">{product.category}</p>
         )}
-        <h3 className="line-clamp-2 font-medium">
+        <h2 className="line-clamp-2 font-medium">
           <Link href={`/products/${product.id}`} className="hover:underline">
             {product.name}
           </Link>
-        </h3>
+        </h2>
         <p className="mt-auto text-lg font-semibold tabular-nums">{formatPrice(product.price)}</p>
         <AddToCartButton product={product} />
       </div>

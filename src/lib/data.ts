@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { ApiError, apiFetch } from "./api";
 import { endpoints } from "./endpoints";
-import { toOrder, toOrders, toProduct, toProductPage, unwrap } from "./normalize";
+import { toOrderPage, toProduct, toProductPage, unwrap } from "./normalize";
 import { getToken } from "./session";
 
 /* ------------------------------------------------------------------ */
@@ -53,27 +53,31 @@ function handleAuthError(err: unknown, next: string): never {
   throw err;
 }
 
-export async function getOrders() {
+export async function getOrders(page = 1) {
   const token = await requireToken("/orders");
   try {
-    const json = await apiFetch(endpoints.orders, { token });
-    return toOrders(json).sort((a, b) =>
-      String(b.createdAt ?? b.id).localeCompare(String(a.createdAt ?? a.id), undefined, {
-        numeric: true,
-      }),
-    );
+    const json = await apiFetch(endpoints.orders, { token, query: { page } });
+    return toOrderPage(json, page);
   } catch (err) {
     handleAuthError(err, "/orders");
   }
 }
 
+/**
+ * La API no expone GET /orders/{id}: buscamos la orden en el historial
+ * paginado del usuario (que ya viene filtrado por su token).
+ */
 export async function getOrder(id: string, from = `/orders/${id}`) {
   const token = await requireToken(from);
   try {
-    const json = await apiFetch(endpoints.order(id), { token });
-    return toOrder(unwrap(json));
+    for (let page = 1, last = 1; page <= last && page <= 20; page++) {
+      const result = toOrderPage(await apiFetch(endpoints.orders, { token, query: { page } }), page);
+      const order = result.items.find((o) => String(o.id) === id);
+      if (order) return order;
+      last = result.lastPage;
+    }
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 403)) notFound();
     handleAuthError(err, from);
   }
+  notFound();
 }

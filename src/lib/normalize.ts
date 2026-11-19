@@ -41,9 +41,21 @@ export function toProduct(p: Json): Product {
   };
 }
 
+/**
+ * La API responde `{ success, data: <paginador de Laravel> }`, donde el paginador
+ * trae `data` (lista), `current_page`, `last_page` y `total`.
+ */
+function paginator(json: Json): { list: Json[]; meta: Json } {
+  let node = json;
+  for (let i = 0; i < 3 && node && !Array.isArray(node); i++) {
+    if (Array.isArray(node.data)) return { list: node.data, meta: node.meta ?? node };
+    node = node.data;
+  }
+  return { list: Array.isArray(node) ? node : [], meta: {} };
+}
+
 export function toProductPage(json: Json, page: number): Paginated<Product> {
-  const list: Json[] = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
-  const meta = json?.meta ?? json ?? {};
+  const { list, meta } = paginator(json);
   return {
     items: list.map(toProduct),
     currentPage: num(meta.current_page, page),
@@ -79,9 +91,14 @@ export function toOrder(o: Json): Order {
   };
 }
 
-export function toOrders(json: Json): Order[] {
-  const list: Json[] = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
-  return list.map(toOrder);
+export function toOrderPage(json: Json, page: number): Paginated<Order> {
+  const { list, meta } = paginator(json);
+  return {
+    items: list.map(toOrder),
+    currentPage: num(meta.current_page, page),
+    lastPage: num(meta.last_page, 1),
+    total: num(meta.total, list.length),
+  };
 }
 
 /** Sanctum/Passport/JWT devuelven el token con distintos nombres. */

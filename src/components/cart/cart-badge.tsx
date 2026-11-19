@@ -9,7 +9,6 @@ export function CartBadge() {
     <Link
       href="/cart"
       className="relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium hover:bg-zinc-100"
-      aria-label={`Carrito, ${count} artículos`}
     >
       <svg aria-hidden width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="21" r="1" />
@@ -23,6 +22,7 @@ export function CartBadge() {
       >
         {count}
       </span>
+      <span className="sr-only"> artículos</span>
     </Link>
   );
 }

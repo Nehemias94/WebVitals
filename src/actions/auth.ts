@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, apiFetch } from "@/lib/api";
 import { endpoints } from "@/lib/endpoints";
-import { extractAuth, toUser, unwrap } from "@/lib/normalize";
+import { extractAuth } from "@/lib/normalize";
 import { createSession, destroySession, getToken } from "@/lib/session";
 import type { FormState } from "@/lib/types";
 
@@ -38,7 +38,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     const json = await apiFetch(endpoints.login, { method: "POST", body: { email, password } });
     const { token, user } = extractAuth(json);
     if (!token) return { error: "La API no devolvió un token de acceso.", values };
-    await createSession(token, user ?? (await fetchUser(token)));
+    await createSession(token, user);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       return { error: "Correo o contraseña incorrectos.", values };
@@ -81,7 +81,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
       user = login.user ?? user;
     }
     if (!token) return { error: "Cuenta creada, pero no se pudo iniciar sesión.", values };
-    await createSession(token, user ?? (await fetchUser(token)));
+    await createSession(token, user);
   } catch (err) {
     return fail(err, values);
   }
@@ -99,12 +99,4 @@ export async function logoutAction() {
   await destroySession();
   revalidatePath("/", "layout");
   redirect("/products");
-}
-
-async function fetchUser(token: string) {
-  try {
-    return toUser(unwrap(await apiFetch(endpoints.me, { token })));
-  } catch {
-    return null;
-  }
 }

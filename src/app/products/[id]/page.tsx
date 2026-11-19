@@ -38,7 +38,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
               className="object-cover"
             />
           ) : (
-            <span className="absolute inset-0 grid place-items-center text-xs uppercase tracking-widest text-zinc-400">
+            <span className="absolute inset-0 grid place-items-center text-xs uppercase tracking-widest text-zinc-600">
               Sin imagen
             </span>
           )}
