@@ -43,7 +43,7 @@ npm start
 | `/register` | Solo invitados | Registro con Server Action y validación (incluye errores 422 de Laravel). |
 | `/login` | Solo invitados | Login con Server Action; guarda el token en una cookie **httpOnly**. |
 | `/cart` | Pública | Carrito en estado local (persistido en `localStorage`); agregar, quitar y cambiar cantidades. Crea la orden mediante mutación. |
-| `/checkout/[orderId]` | Protegida | Resumen de la orden y pago con Stripe. `loading.tsx` y `error.tsx`. |
+| `/checkout` | Protegida | Resumen de la orden y pago con Stripe (crea la orden mediante Server Action). `loading.tsx` y `error.tsx`. |
 | `/checkout/success` | Protegida | Confirmación de compra y vaciado del carrito. |
 | `/orders` | Protegida | Historial de compras del usuario, transmitido con `Suspense`. `loading.tsx` y `error.tsx`. |
 | `/orders/[id]` | Protegida | Detalle de una orden. |
@@ -51,27 +51,21 @@ npm start
 
 ## Endpoints de la API que se consumen
 
-Están todos centralizados en [`src/lib/endpoints.ts`](src/lib/endpoints.ts). Si tu Swagger usa rutas distintas, solo hay que cambiar ese archivo.
+Están todos en [`src/lib/endpoints.ts`](src/lib/endpoints.ts).
 
 | Método | Endpoint | Uso |
 | --- | --- | --- |
-| `POST` | `/register` | Registro |
-| `POST` | `/login` | Login (acepta `token`, `access_token` o `data.token`) |
-| `POST` | `/logout` | Revocar el token |
-| `GET` | `/user` | Usuario autenticado |
-| `GET` | `/products?page=` | Catálogo (acepta paginador de Laravel o un arreglo plano) |
-| `GET` | `/products/{id}` | Detalle |
-| `POST` | `/orders` | Crear orden `{ items: [{ product_id, quantity }] }` |
-| `GET` | `/orders` | Historial |
-| `GET` | `/orders/{id}` | Detalle de orden |
-| `POST` | `/orders/{id}/pay` | Iniciar el pago con Stripe |
+| `POST` | `/api/register` | Registro |
+| `POST` | `/api/login` | Login (devuelve `access_token`) |
+| `POST` | `/api/logout` | Cerrar sesión |
+| `GET` | `/api/products?page=` | Catálogo paginado |
+| `GET` | `/api/products/{id}` | Detalle de producto |
+| `POST` | `/api/orders/checkout` | Crea la orden y cobra con Stripe: `{ items: [{ product_id, quantity }], payment_method_id }` |
+| `GET` | `/api/orders?page=` | Historial de compras |
 
-El pago acepta las dos integraciones de Stripe más comunes:
+Para pagar se usan los métodos de prueba de Stripe (`pm_card_visa`, `pm_card_mastercard` o `pm_card_chargeDeclined` para probar un rechazo). Si se configura `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, el checkout muestra el formulario de tarjeta de Stripe Elements (tarjeta `4242 4242 4242 4242`).
 
-- **Stripe Checkout**: la API responde con `url` / `checkout_url` y el frontend redirige a Stripe.
-- **PaymentIntent**: la API responde con `client_secret` y el frontend muestra Stripe Elements.
-
-Tarjeta de prueba: `4242 4242 4242 4242`, cualquier fecha futura y cualquier CVC.
+La API debe tener `STRIPE_SECRET` (llave `sk_test_...`) en su `.env`.
 
 ## Arquitectura
 
@@ -103,8 +97,7 @@ src/
 - **Cache Components + Partial Prerendering**: el shell de cada página es estático y los datos se transmiten con `Suspense`.
 - El catálogo se cachea con `use cache` + `cacheTag("products")`.
 - **Evitar UI desactualizada después de mutaciones**:
-  - Crear orden → `revalidatePath("/orders")` + `revalidateTag("products", "max")` (el stock cambia).
-  - Pagar → `revalidatePath("/orders")` y `revalidatePath("/orders/{id}")`.
+  - Comprar → `revalidatePath("/orders")` + `revalidateTag("products", "max")` (el stock cambia).
   - Login/logout → `revalidatePath("/", "layout")`.
 - `next/image` con `sizes`, AVIF/WebP y `preload` en las imágenes candidatas a LCP; `next/font` para evitar CLS.
 - Stripe.js se carga de forma diferida, solo cuando se necesita.
@@ -112,10 +105,15 @@ src/
 
 ## Evidencias
 
-> Agrega aquí tus capturas o PDF.
+Las capturas están en [`docs/evidencias`](docs/evidencias):
 
-- Endpoints consumidos desde Swagger: `docs/swagger.png`
-- Prueba del flujo completo de compra: `docs/flujo-compra.png`
-- Reporte de Lighthouse: `docs/lighthouse.pdf`
+- Swagger: `01-swagger-general.jpg`, `02-swagger-endpoints.jpg`
+- Flujo de compra: `03-catalogo.jpg` a `09-historial.jpg`
+- Lighthouse: `10-lighthouse-escritorio.jpg`, `11-lighthouse-movil.jpg` y los reportes completos en HTML
 
-**Cómo generar el reporte de Lighthouse:** corre `npm run build && npm start`, abre `http://localhost:3000/products` en una ventana de incógnito de Chrome, entra a DevTools → **Lighthouse** → *Navigation* → *Desktop* o *Mobile* → **Analyze page load**, y exporta el reporte en PDF o HTML.
+| Lighthouse (`/products`) | Performance | Accessibility | Best Practices | SEO |
+| --- | --- | --- | --- | --- |
+| Escritorio | 100 | 100 | 100 | 100 |
+| Móvil | 98 | 100 | 100 | 100 |
+
+El documento de la actividad y la presentación están en [`docs/`](docs/).
